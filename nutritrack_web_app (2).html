@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NutriTrack — Rastreamento Nutricional</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f3f4f6;
+    }
+    .mobile-container {
+      max-width: 480px;
+      min-height: 100vh;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .animate-slide-up {
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="flex justify-center items-stretch min-h-screen">
+
+  <div class="mobile-container w-full bg-slate-50 flex flex-col justify-between relative overflow-x-hidden">
+    
+    <!-- HEADER -->
+    <header class="bg-white border-b border-slate-100 px-4 py-3 sticky top-0 z-40 flex justify-between items-center shrink-0">
+      <div class="flex items-center gap-2">
+        <div class="bg-emerald-500 text-white p-1.5 rounded-lg">
+          <i data-lucide="activity" class="w-5 h-5"></i>
+        </div>
+        <span class="font-bold text-lg text-slate-800 tracking-tight">NutriTrack</span>
+      </div>
+      
+      <!-- Botões Rápidos (Apenas visíveis no separador 'hoje') -->
+      <div id="header-actions" class="flex items-center gap-2">
+        <button onclick="openModal('exercise-modal')" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors">
+          <span>🏃 Exercício</span>
+        </button>
+        <button onclick="openMealModal()" class="bg-emerald-600 text-white hover:bg-emerald-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors">
+          <span>+ Refeição</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA (Scrollable) -->
+    <main class="flex-1 overflow-y-auto px-4 py-4 pb-24 no-scrollbar">
+      
+      <!-- ============================================== -->
+      <!-- SEPARADOR: HOJE -->
+      <!-- ============================================== -->
+      <section id="tab-hoje" class="space-y-4">
+        <!-- CARD PRINCIPAL: CALORIAS LÍQUIDAS -->
+        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-md shadow-emerald-100 relative overflow-hidden">
+          <div class="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4">
+            <i data-lucide="flame" class="w-40 h-40"></i>
+          </div>
+          <div class="relative z-10">
+            <span class="text-xs uppercase tracking-wider font-semibold opacity-80" id="hoje-data-label">Hoje</span>
+            <div class="flex justify-between items-end mt-2">
+              <div>
+                <span class="text-3xl font-extrabold" id="card-calorias-liquidas">0</span>
+                <span class="text-sm font-medium opacity-90"> kcal líquidas</span>
+              </div>
+              <div class="text-right text-xs">
+                <p>Consumidas: <span id="card-calorias-consumidas">0</span> kcal</p>
+                <p>Exercício: <span id="card-calorias-exercicio">0</span> kcal</p>
+              </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-white/20 flex justify-between text-xs" id="card-balanco-container">
+              <span id="card-balanco-texto">Balanço do objetivo: 0 kcal restantes</span>
+              <span class="bg-white/20 px-2 py-0.5 rounded-full font-medium" id="card-tdee-texto">TDEE: 0 kcal</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD AZUL: ESTIMATIVA DE DATA PARA OBJETIVO -->
+        <div id="card-estimativa-objetivo" class="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+          <div class="bg-blue-500 text-white p-2 rounded-xl shrink-0">
+            <i data-lucide="calendar" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-slate-800 text-sm">Estimativa de Meta</h4>
+            <p id="card-estimativa-texto" class="text-xs text-slate-600 mt-1 leading-relaxed">
+              Calculando estimativa de dias baseada nos seus dados reais...
+            </p>
+          </div>
+        </div>
+
+        <!-- BARRAS DE PROGRESSO MACROS -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
+          <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+            <i data-lucide="donut" class="w-4 h-4 text-emerald-500"></i>
+            Metas Nutricionais Diárias
+          </h3>
+          
+          <!-- Calorias Totais -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-semibold text-slate-700">
+              <span>Energia</span>
+              <span><span id="progress-kcal-atual">0</span> / <span id="progress-kcal-meta">2000</span> kcal</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="bar-kcal" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 pt-2">
+            <!-- Proteína -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] font-semibold text-slate-600">
+                <span>Prot (P)</span>
+                <span id="progress-p-atual">0g</span>
+              </div>
+              <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                <div id="bar-p" class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <div class="text-[10px] text-slate-400 text-right">Meta: <span id="progress-p-meta">0</span>g</div>
+            </div>
+
+            <!-- Hidratos -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] font-semibold text-slate-600">
+                <span>HC (H)</span>
+                <span id="progress-h-atual">0g</span>
+              </div>
+              <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                <div id="bar-h" class="bg-amber-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <div class="text-[10px] text-slate-400 text-right">Meta: <span id="progress-h-meta">0</span>g</div>
+            </div>
+
+            <!-- Gordura -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] font-semibold text-slate-600">
+                <span>Gord (G)</span>
+                <span id="progress-g-atual">0g</span>
+              </div>
+              <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                <div id="bar-g" class="bg-rose-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <div class="text-[10px] text-slate-400 text-right">Meta: <span id="progress-g-meta">0</span>g</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LISTA DE REFEIÇÕES DO DIA -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-sm">Refeições & Atividade de Hoje</h3>
+            <span id="hoje-refeicoes-count" class="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-medium">0 registos</span>
+          </div>
+          
+          <div id="hoje-lista-itens" class="space-y-2.5">
+            <div class="bg-white p-6 rounded-2xl text-center border border-dashed border-slate-200 text-slate-400 text-xs">
+              <i data-lucide="utensils" class="w-8 h-8 mx-auto opacity-30 mb-2"></i>
+              Nenhuma refeição ou exercício registado hoje.
+            </div>
+          </div>
+        </div>
+
+        <!-- RELATÓRIO DE IA BOTÃO -->
+        <button onclick="requestIAReport()" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl py-3 px-4 flex items-center justify-center gap-2 shadow-md transition-all text-sm font-semibold mt-4">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>📋 Relatório do Dia com IA</span>
+        </button>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- SEPARADOR: REGISTO -->
+      <!-- ============================================== -->
+      <section id="tab-registo" class="hidden space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold text-slate-800">Histórico de Registos</h2>
+          <button onclick="clearAllDataPrompt()" class="text-xs text-red-500 hover:text-red-700 font-medium">Limpar Histórico</button>
+        </div>
+
+        <div id="historico-container" class="space-y-4">
+          <!-- Inserido dinamicamente por JS -->
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- SEPARADOR: SEMANA -->
+      <!-- ============================================== -->
+      <section id="tab-semana" class="hidden space-y-4">
+        <h2 class="text-lg font-bold text-slate-800">Balanço Semanal (Últimos 7 Dias)</h2>
+        <p class="text-xs text-slate-500">Compare o seu consumo líquido face ao objetivo de calorias configurado.</p>
+        
+        <div id="semana-bars-container" class="space-y-3">
+          <!-- Dinâmico -->
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- SEPARADOR: GRÁFICOS & CONFIGS -->
+      <!-- ============================================== -->
+      <section id="tab-graficos" class="hidden space-y-5">
+        <h2 class="text-lg font-bold text-slate-800">Análise e Backup</h2>
+        
+        <!-- BACKUP / RESTAURAR -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+          <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+            <i data-lucide="database" class="w-4 h-4 text-slate-600"></i>
+            Cópia de Segurança (iOS/Safari)
+          </h3>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            Exporte ou importe os seus dados nutricionais, biblioteca de alimentos e configurações de perfil.
+          </p>
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <button onclick="exportData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              Exportar JSON
+            </button>
+            <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+              Importar JSON
+              <input type="file" id="import-file" class="hidden" onchange="importData(event)">
+            </label>
+          </div>
+        </div>
+
+        <!-- GRÁFICO CALORIAS LÍQUIDAS -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+          <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+            <i data-lucide="bar-chart-2" class="w-4 h-4 text-emerald-500"></i>
+            Gráfico: Calorias Líquidas (Últimos 7 dias)
+          </h3>
+          <div id="grafico-calorias-container" class="h-44 flex items-end justify-between gap-1 pt-4 border-b border-l border-slate-100">
+            <!-- Barras do gráfico adicionadas pelo JS -->
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-400">
+            <span>Há 7 dias</span>
+            <span>Hoje</span>
+          </div>
+        </div>
+
+        <!-- GRÁFICO LINHA MACROS -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+          <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+            <i data-lucide="trending-up" class="w-4 h-4 text-indigo-500"></i>
+            Gráfico: Distribuição de Macros (g)
+          </h3>
+          <div id="grafico-macros-container" class="h-40 flex items-end justify-between gap-1 pt-4 border-b border-l border-slate-100 relative">
+            <!-- Conteúdo construído via JS -->
+          </div>
+          <div class="flex justify-center gap-4 text-[11px] font-semibold mt-1">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> P</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-amber-500 rounded-full"></span> HC</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span> G</span>
+          </div>
+        </div>
+
+        <!-- BIBLIOTECA DE REFEIÇÕES GUARDADAS -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <i data-lucide="book-open" class="w-4 h-4 text-amber-500"></i>
+              Biblioteca Guardada
+            </h3>
+            <span id="biblioteca-count" class="text-xs bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">0 itens</span>
+          </div>
+          <div id="biblioteca-lista-gestao" class="max-h-60 overflow-y-auto space-y-2 no-scrollbar text-xs">
+            <!-- Dinâmico -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- SEPARADOR: PERFIL -->
+      <!-- ============================================== -->
+      <section id="tab-perfil" class="hidden space-y-5">
+        <h2 class="text-lg font-bold text-slate-800">O Seu Perfil & Metas</h2>
+
+        <!-- WARNBOX SEGURANÇA (GERADO DINAMICAMENTE) -->
+        <div id="perfil-alert-box" class="hidden bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-4 space-y-1.5 shadow-sm">
+          <div class="flex items-center gap-2 font-bold text-sm">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
+            <span>Alertas de Segurança</span>
+          </div>
+          <ul id="perfil-alert-lista" class="text-xs space-y-1 list-disc list-inside">
+            <!-- Alertas dinâmicos -->
+          </ul>
+        </div>
+
+        <!-- PRÉ-VISUALIZAÇÃO DE CÁLCULO CIENTÍFICO -->
+        <div class="bg-slate-900 text-white rounded-2xl p-5 shadow-lg space-y-4 relative">
+          <div class="absolute right-4 top-4 bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">
+            Fórmula Mifflin-St Jeor
+          </div>
+          <h3 class="font-bold text-sm tracking-wide text-slate-300">Cálculos Nutricionais Atuais</h3>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-0.5">
+              <span class="text-xs text-slate-400 block">TMB (Tamanho Base)</span>
+              <span class="text-lg font-bold text-white" id="perfil-preview-tmb">0 kcal</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-xs text-slate-400 block">TDEE (Metabolismo Total)</span>
+              <span class="text-lg font-bold text-white" id="perfil-preview-tdee">0 kcal</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-xs text-slate-400 block">Meta Diária (Target)</span>
+              <span class="text-lg font-bold text-emerald-400" id="perfil-preview-meta">0 kcal</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-xs text-slate-400 block">Estimativa de Meta</span>
+              <span class="text-xs font-semibold text-blue-400 block leading-tight" id="perfil-preview-estimativa">Pendente...</span>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-800 pt-3 flex justify-between text-xs text-slate-400">
+            <span>P: <strong class="text-white" id="perfil-preview-p">0g</strong></span>
+            <span>HC: <strong class="text-white" id="perfil-preview-h">0g</strong></span>
+            <span>G: <strong class="text-white" id="perfil-preview-g">0g</strong></span>
+          </div>
+        </div>
+
+        <!-- FORMULÁRIO PERFIL -->
+        <form id="perfil-form" onsubmit="saveProfile(event)" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">Idade (Anos)</label>
+              <input type="number" id="perf-idade" value="28" required class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" oninput="liveUpdateProfilePreview()">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">Sexo Biológico</label>
+              <select id="perf-sexo" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" onchange="toggleConditionalProfileFields(); liveUpdateProfilePreview();">
+                <option value="masculino">Masculino</option>
+                <option value="feminino">Feminino</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">Peso Atual (kg)</label>
+              <input type="number" step="0.1" id="perf-peso" value="75" required class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" oninput="liveUpdateProfilePreview()">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">Altura (cm)</label>
+              <input type="number" id="perf-altura" value="175" required class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" oninput="liveUpdateProfilePreview()">
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-700">Nível de Atividade Física</label>
+            <select id="perf-atividade" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" onchange="liveUpdateProfilePreview()">
+              <option value="1.2">Sedentário (Pouco ou nenhum exercício)</option>
+              <option value="1.375">Levemente ativo (Exercício 1-3 dias/semana)</option>
+              <option value="1.55">Moderadamente ativo (Exercício 3-5 dias/semana)</option>
+              <option value="1.725">Muito ativo (Treino intenso 6-7 dias/semana)</option>
+              <option value="1.9">Extremamente ativo (Atleta profissional ou trabalho físico pesado)</option>
+            </select>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-700">Objetivo de Saúde</label>
+            <select id="perf-objetivo" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" onchange="toggleConditionalProfileFields(); liveUpdateProfilePreview();">
+              <option value="perder-peso">Perder peso (Défice Científico ACSM)</option>
+              <option value="ganhar-peso">Ganhar peso (Superávit Controlado)</option>
+              <option value="manter-peso">Manter peso (Recomposição Basal)</option>
+              <option value="perder-gordura">Perder gordura corporal (Lyle McDonald)</option>
+            </select>
+          </div>
+
+          <!-- Campos Condicionais: Peso Alvo -->
+          <div id="wrapper-peso-alvo" class="space-y-1">
+            <label class="text-xs font-bold text-slate-700">Peso Alvo (kg)</label>
+            <input type="number" step="0.1" id="perf-peso-alvo" value="70" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" oninput="liveUpdateProfilePreview()">
+          </div>
+
+          <!-- Campos Condicionais: Percentagem Gordura -->
+          <div id="wrapper-gordura" class="hidden grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">% Gordura Atual</label>
+              <input type="number" step="0.1" id="perf-gordura-atual" value="22" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" oninput="liveUpdateProfilePreview()">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-slate-700">% Gordura Alvo</label>
+              <input type="number" step="0.1" id="perf-gordura-alvo" value="15" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-emerald-500" oninput="liveUpdateProfilePreview()">
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors mt-2 shadow-sm">
+            Guardar Configurações e Atualizar Metas
+          </button>
+        </form>
+
+        <!-- SECÇÃO REFERÊNCIAS CIENTÍFICAS -->
+        <div class="bg-slate-100 rounded-2xl p-4 text-xs text-slate-500 space-y-2">
+          <h4 class="font-bold text-slate-700 flex items-center gap-1.5 text-xs">
+            <i data-lucide="info" class="w-3.5 h-3.5"></i>
+            Fundamentação Científica
+          </h4>
+          <p class="leading-relaxed">
+            Esta app utiliza a fórmula de <strong>Mifflin-St Jeor (1990)</strong> reconhecida pela literatura científica para determinar a taxa metabólica basal (TMB). Os ajustes de déficit calórico e limites mínimos saudáveis de gordura e perda são derivados das diretrizes do <strong>ACSM (American College of Sports Medicine)</strong>. As metas de proteína baseadas em massa magra seguem o modelo de <strong>Helms et al. (2014)</strong> e a dinâmica de perda de gordura é pautada nos modelos de recomendação de <strong>Lyle McDonald</strong>.
+          </p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER NAV BAR (Fixed Bottom) -->
+    <nav class="bg-white border-t border-slate-100 absolute bottom-0 left-0 right-0 h-16 flex items-stretch justify-around px-2 z-40 shrink-0">
+      <button onclick="switchTab('hoje')" id="nav-hoje" class="flex flex-col items-center justify-center gap-1 text-emerald-600 font-semibold w-16 transition-all">
+        <i data-lucide="calendar-days" class="w-5 h-5"></i>
+        <span class="text-[10px]">Hoje</span>
+      </button>
+      <button onclick="switchTab('registo')" id="nav-registo" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium w-16 transition-all">
+        <i data-lucide="history" class="w-5 h-5"></i>
+        <span class="text-[10px]">Registo</span>
+      </button>
+      <button onclick="switchTab('semana')" id="nav-semana" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium w-16 transition-all">
+        <i data-lucide="milestone" class="w-5 h-5"></i>
+        <span class="text-[10px]">Semana</span>
+      </button>
+      <button onclick="switchTab('graficos')" id="nav-graficos" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium w-16 transition-all">
+        <i data-lucide="pie-chart" class="w-5 h-5"></i>
+        <span class="text-[10px]">Gráficos</span>
+      </button>
+      <button onclick="switchTab('perfil')" id="nav-perfil" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium w-16 transition-all">
+        <i data-lucide="user" class="w-5 h-5"></i>
+        <span class="text-[10px]">Perfil</span>
+      </button>
+    </nav>
+
+    <!-- ============================================== -->
+    <!-- MODAL: REGISTO DE REFEIÇÃO COM IA -->
+    <!-- ============================================== -->
+    <div id="meal-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-end justify-center px-4 pb-6">
+      <div class="bg-white rounded-2xl w-full max-w-[440px] p-5 shadow-2xl space-y-4 animate-slide-up">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-slate-800 text-base flex items-center gap-1.5">
+            <i data-lucide="plus-circle" class="text-emerald-500 w-5 h-5"></i>
+            Registar Refeição Inteligente (IA)
+          </h3>
+          <button onclick="closeModal('meal-modal')" class="text-slate-400 hover:text-slate-600">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <!-- Entrada Rápida IA -->
+          <div class="space-y-1.5 relative">
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-bold text-slate-600">Descreva o que comeu (Análise com IA)</label>
+              <button onclick="toggleLibraryView()" id="btn-show-library" class="text-emerald-600 hover:underline font-semibold flex items-center gap-0.5 text-xs">
+                <i data-lucide="book-open" class="w-3 h-3"></i> Biblioteca
+              </button>
+            </div>
+            <textarea id="meal-desc-ia" placeholder="Ex: Arroz com frango grelhado 200g e uma banana de sobremesa..." rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-xs focus:outline-emerald-500 pr-10"></textarea>
+            <!-- Loading Indicator -->
+            <div id="ia-analyzer-spinner" class="hidden absolute right-3 bottom-3 text-emerald-500 animate-spin">
+              <i data-lucide="loader" class="w-4 h-4"></i>
+            </div>
+          </div>
+
+          <!-- Biblioteca Ocultável -->
+          <div id="quick-library-section" class="hidden bg-slate-50 border border-slate-100 rounded-xl p-3 max-h-32 overflow-y-auto space-y-1.5 no-scrollbar">
+            <!-- Inserido dinamicamente -->
+          </div>
+
+          <!-- Confiança de IA -->
+          <div id="ia-confidence-indicator" class="hidden p-2.5 rounded-xl border flex items-center gap-2 text-xs font-semibold">
+            <!-- Preenchido dinamicamente -->
+          </div>
+
+          <!-- Campos Editáveis -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-500">Nome do Alimento</label>
+              <input type="text" id="meal-field-name" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs focus:bg-white focus:outline-emerald-500">
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-500">Energia (kcal)</label>
+              <input type="number" id="meal-field-kcal" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs focus:bg-white focus:outline-emerald-500">
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-500">Proteínas (g)</label>
+              <input type="number" step="0.1" id="meal-field-protein" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs focus:bg-white focus:outline-emerald-500">
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-500">Hidratos (g)</label>
+              <input type="number" step="0.1" id="meal-field-carbs" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs focus:bg-white focus:outline-emerald-500">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-500">Gorduras (g)</label>
+              <input type="number" step="0.1" id="meal-field-fat" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs focus:bg-white focus:outline-emerald-500">
+            </div>
+            <div class="flex items-center gap-1.5 h-full pt-4">
+              <input type="checkbox" id="meal-field-save-lib" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4">
+              <label for="meal-field-save-lib" class="text-[11px] font-semibold text-slate-600">Guardar na Biblioteca</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <button onclick="closeModal('meal-modal')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition-colors">
+            Cancelar
+          </button>
+          <button onclick="saveMealEntry()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors shadow-sm">
+            Confirmar e Registar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL: REGISTO DE EXERCÍCIO -->
+    <!-- ============================================== -->
+    <div id="exercise-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-end justify-center px-4 pb-6">
+      <div class="bg-white rounded-2xl w-full max-w-[440px] p-5 shadow-2xl space-y-4 animate-slide-up">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-slate-800 text-base flex items-center gap-1.5">
+            <i data-lucide="dumbbell" class="text-blue-500 w-5 h-5"></i>
+            Registar Atividade Física
+          </h3>
+          <button onclick="closeModal('exercise-modal')" class="text-slate-400 hover:text-slate-600">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-600">Nome da Atividade</label>
+            <input type="text" id="exe-name" placeholder="Ex: Corrida, Musculação, Natação..." class="w-full border border-slate-200 rounded-xl p-3 text-xs focus:outline-emerald-500">
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-600">Calorias Gastas (kcal)</label>
+            <input type="number" id="exe-kcal" placeholder="Ex: 350" class="w-full border border-slate-200 rounded-xl p-3 text-xs focus:outline-emerald-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <button onclick="closeModal('exercise-modal')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition-colors">
+            Cancelar
+          </button>
+          <button onclick="saveExerciseEntry()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors shadow-sm">
+            Guardar Treino
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL: RELATÓRIO DE DIA IA -->
+    <!-- ============================================== -->
+    <div id="report-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-end justify-center px-4 pb-6">
+      <div class="bg-white rounded-2xl w-full max-w-[440px] p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col justify-between overflow-hidden">
+        <div class="flex justify-between items-center shrink-0">
+          <h3 class="font-bold text-indigo-800 text-base flex items-center gap-1.5">
+            <i data-lucide="sparkles" class="text-indigo-500 w-5 h-5"></i>
+            Avaliação de IA do NutriTrack
+          </h3>
+          <button onclick="closeModal('report-modal')" class="text-slate-400 hover:text-slate-600">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Conteúdo do Relatório de IA -->
+        <div id="report-content-box" class="flex-1 overflow-y-auto text-slate-700 text-xs leading-relaxed space-y-3 pr-1">
+          <!-- Inserção com efeito de loading -->
+          <div class="flex flex-col items-center justify-center py-10 space-y-3">
+            <i data-lucide="loader" class="w-8 h-8 text-indigo-500 animate-spin"></i>
+            <p class="text-slate-500 font-semibold">O nutricionista de IA está a analisar o seu dia...</p>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 shrink-0">
+          <button onclick="closeModal('report-modal')" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors">
+            Fechar Relatório
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOM NOTIFICATION BOX -->
+    <div id="custom-toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl shadow-lg z-50 flex items-center gap-2">
+      <span id="toast-text">Mensagem do sistema</span>
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // VARIÁVEIS GLOBAIS & CONFIGURAÇÃO
+    // =========================================================================
+    const apiKey = ""; // Chave fornecida em Runtime
+
+    // Chaves de Armazenamento
+    const KEY_HISTORY = "nutritrack_data_v3";
+    const KEY_PROFILE = "nutritrack_profile_v3";
+    const KEY_LIBRARY = "nutritrack_library_v1";
+
+    // Estado da App
+    let appState = {
+      profile: {
+        idade: 28,
+        peso: 75,
+        altura: 175,
+        sexo: "masculino",
+        atividade: "1.55", // Moderadamente ativo
+        objetivo: "perder-peso",
+        pesoAlvo: 70,
+        gorduraAtual: 22,
+        gorduraAlvo: 15
+      },
+      history: {}, // Estrutura: { "YYYY-MM-DD": [ {id, type, name, kcal, protein, carbs, fat, confidence, time}, ... ] }
+      library: []  // Estrutura: [ {id, name, kcal, protein, carbs, fat} ]
+    };
+
+    let activeTab = 'hoje';
+    let iaDebounceTimer = null;
+
+    // Gerador de UUID seguro para Safari iOS (Substitui crypto.randomUUID)
+    function generateUUID() {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    // Tradutor de Datas Seguro para iOS Safari (Evita erros de parsing NaN / Invalid Date)
+    function parseDateSafe(dateStr) {
+      if (!dateStr) return new Date();
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      }
+      return new Date(dateStr);
+    }
+
+    // Guard de Escrita Segura em LocalStorage (Evita quebra no modo privado do iOS)
+    function safeLocalStorageSet(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.warn("Aviso: Falha ao guardar dados no LocalStorage (Modo Privado ou sem espaço). Mantido em memória dinâmica.");
+      }
+    }
+
+    // =========================================================================
+    // AUXILIAR DE REDE COM EXPONENTIAL BACKOFF (OBRIGATÓRIO)
+    // =========================================================================
+    async function fetchWithRetry(url, options, maxRetries = 5) {
+      const delays = [1000, 2000, 4000, 8000, 16000];
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const response = await fetch(url, options);
+          if (response.ok) {
+            return response;
+          }
+          if (response.status !== 429 && response.status < 500) {
+            return response;
+          }
+        } catch (error) {
+          if (i === maxRetries - 1) throw error;
+        }
+        if (i < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delays[i]));
+        }
+      }
+      throw new Error("Falha na ligação após várias tentativas de retransmissão.");
+    }
+
+    // =========================================================================
+    // INICIALIZAÇÃO
+    // =========================================================================
+    document.addEventListener("DOMContentLoaded", () => {
+      loadLocalStorageData();
+      initUI();
+      lucide.createIcons();
+    });
+
+    function loadLocalStorageData() {
+      // Carregar Perfil
+      const savedProfile = localStorage.getItem(KEY_PROFILE);
+      if (savedProfile) {
+        try {
+          appState.profile = JSON.parse(savedProfile);
+        } catch(e) { console.error("Erro ao ler perfil", e); }
+      }
+
+      // Carregar Histórico
+      const savedHistory = localStorage.getItem(KEY_HISTORY);
+      if (savedHistory) {
+        try {
+          appState.history = JSON.parse(savedHistory);
+        } catch(e) { console.error("Erro ao ler histórico", e); }
+      }
+
+      // Carregar Biblioteca de Refeições
+      const savedLibrary = localStorage.getItem(KEY_LIBRARY);
+      if (savedLibrary) {
+        try {
+          appState.library = JSON.parse(savedLibrary);
+        } catch(e) { console.error("Erro ao ler biblioteca", e); }
+      }
+    }
+
+    function saveState() {
+      const stateStringProfile = JSON.stringify(appState.profile);
+      const stateStringHistory = JSON.stringify(appState.history);
+      const stateStringLibrary = JSON.stringify(appState.library);
+
+      safeLocalStorageSet(KEY_PROFILE, stateStringProfile);
+      safeLocalStorageSet(KEY_HISTORY, stateStringHistory);
+      safeLocalStorageSet(KEY_LIBRARY, stateStringLibrary);
+    }
+
+    function initUI() {
+      // Preencher formulários com dados atuais
+      document.getElementById('perf-idade').value = appState.profile.idade;
+      document.getElementById('perf-sexo').value = appState.profile.sexo;
+      document.getElementById('perf-peso').value = appState.profile.peso;
+      document.getElementById('perf-altura').value = appState.profile.altura;
+      document.getElementById('perf-atividade').value = appState.profile.atividade;
+      document.getElementById('perf-objetivo').value = appState.profile.objetivo;
+      document.getElementById('perf-peso-alvo').value = appState.profile.pesoAlvo || "";
+      document.getElementById('perf-gordura-atual').value = appState.profile.gorduraAtual || "";
+      document.getElementById('perf-gordura-alvo').value = appState.profile.gorduraAlvo || "";
+
+      toggleConditionalProfileFields();
+      setupDebounceIA();
+      updateDashboard();
+    }
+
+    // =========================================================================
+    // CÁLCULOS NUTRICIONAIS CIENTÍFICOS
+    // =========================================================================
+    function getTodayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function calculateNutrition(profile) {
+      const p = profile || appState.profile;
+      
+      // 1. TMB - Mifflin-St Jeor
+      let tmb = 0;
+      if (p.sexo === "masculino") {
+        tmb = 10 * p.peso + 6.25 * p.altura - 5 * p.idade + 5;
+      } else {
+        tmb = 10 * p.peso + 6.25 * p.altura - 5 * p.idade - 161;
+      }
+
+      // 2. TDEE
+      const fatorAtividade = parseFloat(p.atividade) || 1.2;
+      const tdee = tmb * fatorAtividade;
+
+      // 3. Ajuste por Objetivo
+      let targetKcal = tdee;
+      let proteinaG = p.peso * 2.0; // Base padrão ACSM / Helms
+      let targetStatus = "Manter peso";
+
+      if (p.objetivo === "ganhar-peso") {
+        targetKcal = tdee + 400;
+        targetStatus = "Ganhar peso";
+      } 
+      else if (p.objetivo === "perder-peso") {
+        // ACSM/AND baseada em 0.5% - 1% do peso semanal
+        const weeklyLoss = Math.min(p.peso * 0.0075, 0.9); // max 0.9 kg/semana
+        const dailyDeficit = (weeklyLoss * 7700) / 7; // 1 kg de gordura ≈ 7700 kcal
+        const finalDeficit = Math.min(dailyDeficit, 750); // máx −750 kcal/dia
+        targetKcal = tdee - finalDeficit;
+        
+        // Mínimo de segurança calórico
+        if (targetKcal < 1200) targetKcal = 1200;
+        
+        // Proteína prioritária preservação muscular
+        proteinaG = p.peso * 2.0; 
+        targetStatus = `Perder peso (${weeklyLoss.toFixed(2)} kg/sem)`;
+      } 
+      else if (p.objetivo === "perder-gordura") {
+        // Modelo Lyle McDonald baseado em % gordura atual
+        let deficit = 350;
+        if (p.sexo === "masculino") {
+          if (p.gorduraAtual > 20) deficit = 500;
+          else if (p.gorduraAtual >= 15) deficit = 350;
+          else deficit = 250;
+        } else {
+          if (p.gorduraAtual > 28) deficit = 500;
+          else if (p.gorduraAtual >= 22) deficit = 350;
+          else deficit = 250;
+        }
+
+        targetKcal = tdee - deficit;
+        if (targetKcal < 1200) targetKcal = 1200;
+
+        // Proteína baseada em Massa Magra (Helms et al. 2014)
+        const massaMagra = p.peso * (1 - (p.gorduraAtual / 100));
+        proteinaG = massaMagra * 2.5;
+        targetStatus = "Perder gordura (Modelo Lyle McDonald)";
+      }
+
+      // 4. Divisão de Macronutrientes
+      // Gordura: 25-28% das calorias target (usamos 26%)
+      const gorduraPct = 26;
+      const gorduraKcal = targetKcal * (gorduraPct / 100);
+      const gorduraG = gorduraKcal / 9;
+
+      // Carboidratos: restantes após dedução de proteína e gordura
+      const proteinaKcal = proteinaG * 4;
+      const hckcal = Math.max(0, targetKcal - (proteinaKcal + gorduraKcal));
+      const hidratosG = hckcal / 4;
+
+      return {
+        tmb: Math.round(tmb),
+        tdee: Math.round(tdee),
+        targetKcal: Math.round(targetKcal),
+        proteinaG: Math.round(proteinaG),
+        gorduraG: Math.round(gorduraG),
+        hidratosG: Math.round(hidratosG),
+        status: targetStatus
+      };
+    }
+
+    // =========================================================================
+    // ESTIMATIVA DE DATA PARA META
+    // =========================================================================
+    function getEstimatedDaysToGoal() {
+      const p = appState.profile;
+      if (p.objetivo === "manter-peso") return null;
+
+      let deltaKg = 0;
+      if (p.objetivo === "perder-peso") {
+        deltaKg = p.peso - p.pesoAlvo;
+      } else if (p.objetivo === "ganhar-peso") {
+        deltaKg = p.pesoAlvo - p.peso;
+      } else if (p.objetivo === "perder-gordura") {
+        const massaGordaAtual = p.peso * (p.gorduraAtual / 100);
+        const massaMagra = p.peso - massaGordaAtual;
+        const pesoAlvoEstimado = massaMagra / (1 - (p.gorduraAlvo / 100));
+        deltaKg = p.peso - pesoAlvoEstimado;
+      }
+
+      if (deltaKg <= 0) return { reach: true, days: 0, dateStr: "Meta já alcançada!" };
+
+      const keys = Object.keys(appState.history);
+      let deficitMedio = 0;
+      const metas = calculateNutrition();
+      const defTeorico = Math.abs(metas.tdee - metas.targetKcal);
+
+      if (keys.length < 2) {
+        deficitMedio = defTeorico > 50 ? defTeorico : 350;
+      } else {
+        let totalDeficit = 0;
+        let count = 0;
+        keys.forEach(key => {
+          const dayItems = appState.history[key] || [];
+          let consumido = 0;
+          let exercicio = 0;
+          dayItems.forEach(item => {
+            if (item.type === "refeicao") consumido += item.kcal;
+            if (item.type === "exercicio") exercicio += item.kcal;
+          });
+          const realLiquido = consumido - exercicio;
+          const realDeficit = metas.tdee - realLiquido;
+          totalDeficit += realDeficit;
+          count++;
+        });
+        deficitMedio = totalDeficit / count;
+        if (p.objetivo.includes("perder") && deficitMedio <= 50) deficitMedio = defTeorico;
+        if (p.objetivo === "ganhar-peso" && deficitMedio >= -50) deficitMedio = -400; 
+      }
+
+      const caloriasTotaisNecessarias = deltaKg * 7700;
+      const diasNecessarios = Math.ceil(caloriasTotaisNecessarias / Math.abs(deficitMedio));
+      
+      if (!isFinite(diasNecessarios) || diasNecessarios > 1000) {
+        return { reach: false, text: "Ajuste o seu registo alimentar para obter uma estimativa de progresso realista." };
+      }
+
+      const dataEstimada = new Date();
+      dataEstimada.setDate(dataEstimada.getDate() + diasNecessarios);
+
+      const options = { day: 'numeric', month: 'long', year: 'numeric' };
+      const dataFormatada = dataEstimada.toLocaleDateString('pt-PT', options);
+
+      return {
+        reach: true,
+        days: diasNecessarios,
+        dateStr: dataFormatada,
+        kgAPerder: deltaKg.toFixed(1)
+      };
+    }
+
+    // =========================================================================
+    // NAVEGAÇÃO / TABS
+    // =========================================================================
+    function switchTab(tabId) {
+      activeTab = tabId;
+      
+      document.getElementById('tab-hoje').classList.add('hidden');
+      document.getElementById('tab-registo').classList.add('hidden');
+      document.getElementById('tab-semana').classList.add('hidden');
+      document.getElementById('tab-graficos').classList.add('hidden');
+      document.getElementById('tab-perfil').classList.add('hidden');
+
+      const navButtons = document.querySelectorAll('nav button');
+      navButtons.forEach(btn => {
+        btn.classList.remove('text-emerald-600', 'font-semibold');
+        btn.classList.add('text-slate-400', 'font-medium');
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      
+      const activeBtn = document.getElementById(`nav-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-400', 'font-medium');
+        activeBtn.classList.add('text-emerald-600', 'font-semibold');
+      }
+
+      const headerActions = document.getElementById('header-actions');
+      if (tabId === 'hoje') {
+        headerActions.classList.remove('hidden');
+      } else {
+        headerActions.classList.add('hidden');
+      }
+
+      updateDashboard();
+      document.querySelector('main').scrollTop = 0;
+    }
+
+    // =========================================================================
+    // GESTÃO DE MODALS & TOAST
+    // =========================================================================
+    function openModal(id) {
+      const el = document.getElementById(id);
+      el.classList.remove('hidden');
+      el.classList.add('flex');
+    }
+
+    // Função de fechamento genérica compatível com cliques rápidos de telemóvel
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+
+    function openMealModal() {
+      // Limpar formulário de refeição
+      document.getElementById('meal-desc-ia').value = '';
+      document.getElementById('meal-field-name').value = '';
+      document.getElementById('meal-field-kcal').value = '';
+      document.getElementById('meal-field-protein').value = '';
+      document.getElementById('meal-field-carbs').value = '';
+      document.getElementById('meal-field-fat').value = '';
+      document.getElementById('meal-field-save-lib').checked = false;
+      
+      const confidenceIndicator = document.getElementById('ia-confidence-indicator');
+      confidenceIndicator.classList.add('hidden');
+      
+      // Carregar biblioteca rápida
+      renderQuickLibrary();
+      
+      openModal('meal-modal');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('custom-toast');
+      document.getElementById('toast-text').innerText = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // =========================================================================
+    // DINÂMICAS DE FORMULÁRIO DE PERFIL & ALERTA DE SEGURANÇA
+    // =========================================================================
+    function toggleConditionalProfileFields() {
+      const objetivo = document.getElementById('perf-objetivo').value;
+      const wrapperPesoAlvo = document.getElementById('wrapper-peso-alvo');
+      const wrapperGordura = document.getElementById('wrapper-gordura');
+
+      if (objetivo === 'perder-peso' || objetivo === 'ganhar-peso') {
+        wrapperPesoAlvo.classList.remove('hidden');
+        wrapperGordura.classList.add('hidden');
+      } else if (objetivo === 'perder-gordura') {
+        wrapperPesoAlvo.classList.add('hidden');
+        wrapperGordura.classList.remove('hidden');
+      } else {
+        wrapperPesoAlvo.classList.add('hidden');
+        wrapperGordura.classList.add('hidden');
+      }
+    }
+
+    function checkSecurityAlerts(profile, scientific) {
+      const alerts = [];
+      const p = profile;
+
+      // Alerta 1: Défice agressivo (máximo ACSM)
+      const deficit = scientific.tdee - scientific.targetKcal;
+      if (deficit >= 750) {
+        alerts.push("O défice calórico diário está ajustado no limite máximo recomendado pela ACSM (-750 kcal/dia) para evitar fadiga extrema.");
+      }
+
+      // Alerta 2: Perda superior a 20% do peso atual
+      if (p.objetivo === 'perder-peso' && p.pesoAlvo < p.peso * 0.8) {
+        alerts.push(`O seu objetivo de peso (${p.pesoAlvo} kg) representa uma redução de mais de 20% do seu peso atual. Recomendamos fases intermédias de manutenção.`);
+      }
+
+      // Alerta 3: Gordura essencial abaixo do saudável (ACSM)
+      if (p.objetivo === 'perder-gordura') {
+        if (p.sexo === 'masculino') {
+          if (p.gorduraAlvo < 5) {
+            alerts.push("Erro crítico: Percentagem de gordura alvo inferior ao limite biológico de sobrevivência para homens (5%).");
+          } else if (p.gorduraAlvo < 10) {
+            alerts.push("Atenção: Gordura corporal alvo abaixo de 10% requer rigor competitivo e pode impactar a produção hormonal masculina.");
+          }
+        } else {
+          if (p.gorduraAlvo < 12) {
+            alerts.push("Erro crítico: Percentagem de gordura alvo inferior ao limite biológico de sobrevivência para mulheres (12%).");
+          } else if (p.gorduraAlvo < 18) {
+            alerts.push("Atenção: Gordura corporal alvo abaixo de 18% pode causar irregularidades no ciclo menstrual e queda de densidade óssea.");
+          }
+        }
+      }
+
+      // Alerta 4: Perfil incompleto
+      if ((p.objetivo === 'perder-peso' || p.objetivo === 'ganhar-peso') && !p.pesoAlvo) {
+        alerts.push("Por favor, introduza um Peso Alvo válido para calcular a estimativa temporal da sua meta.");
+      }
+
+      const alertBox = document.getElementById('perfil-alert-box');
+      const alertLista = document.getElementById('perfil-alert-lista');
+      
+      if (alerts.length > 0) {
+        alertLista.innerHTML = alerts.map(a => `<li>${a}</li>`).join('');
+        alertBox.classList.remove('hidden');
+      } else {
+        alertBox.classList.add('hidden');
+      }
+    }
+
+    function liveUpdateProfilePreview() {
+      // Ler dados do formulário temporariamente para preview
+      const tempProfile = {
+        idade: parseInt(document.getElementById('perf-idade').value) || 28,
+        peso: parseFloat(document.getElementById('perf-peso').value) || 75,
+        altura: parseInt(document.getElementById('perf-altura').value) || 175,
+        sexo: document.getElementById('perf-sexo').value,
+        atividade: document.getElementById('perf-atividade').value,
+        objetivo: document.getElementById('perf-objetivo').value,
+        pesoAlvo: parseFloat(document.getElementById('perf-peso-alvo').value) || 70,
+        gorduraAtual: parseFloat(document.getElementById('perf-gordura-atual').value) || 22,
+        gorduraAlvo: parseFloat(document.getElementById('perf-gordura-alvo').value) || 15
+      };
+
+      const scientific = calculateNutrition(tempProfile);
+      
+      document.getElementById('perfil-preview-tmb').innerText = `${scientific.tmb} kcal`;
+      document.getElementById('perfil-preview-tdee').innerText = `${scientific.tdee} kcal`;
+      document.getElementById('perfil-preview-meta').innerText = `${scientific.targetKcal} kcal`;
+      
+      document.getElementById('perfil-preview-p').innerText = `${scientific.proteinaG}g`;
+      document.getElementById('perfil-preview-h').innerText = `${scientific.hidratosG}g`;
+      document.getElementById('perfil-preview-g').innerText = `${scientific.gorduraG}g`;
+
+      // Update goal estimate in real-time preview
+      const estimativa = getEstimatedDaysToGoal();
+      const textEst = document.getElementById('perfil-preview-estimativa');
+      if (estimativa && estimativa.reach) {
+        textEst.innerText = `${estimativa.dateStr} (${estimativa.days} dias, perder ${estimativa.kgAPerder} kg)`;
+      } else {
+        textEst.innerText = "Objetivo de manutenção / Dados em falta";
+      }
+
+      checkSecurityAlerts(tempProfile, scientific);
+    }
+
+    function saveProfile(event) {
+      if (event) event.preventDefault();
+
+      appState.profile = {
+        idade: parseInt(document.getElementById('perf-idade').value),
+        sexo: document.getElementById('perf-sexo').value,
+        peso: parseFloat(document.getElementById('perf-peso').value),
+        altura: parseInt(document.getElementById('perf-altura').value),
+        atividade: document.getElementById('perf-atividade').value,
+        objetivo: document.getElementById('perf-objetivo').value,
+        pesoAlvo: parseFloat(document.getElementById('perf-peso-alvo').value) || null,
+        gorduraAtual: parseFloat(document.getElementById('perf-gordura-atual').value) || null,
+        gorduraAlvo: parseFloat(document.getElementById('perf-gordura-alvo').value) || null
+      };
+
+      saveState();
+      showToast("Configurações do perfil gravadas com sucesso!");
+      updateDashboard();
+    }
+
+    // =========================================================================
+    // ATUALIZAÇÃO DO DASHBOARD (HOJE / REGISTO / SEMANA / GRÁFICOS)
+    // =========================================================================
+    function updateDashboard() {
+      const todayKey = getTodayKey();
+      const metas = calculateNutrition();
+      
+      // 1. Atualizar cards principais (Hoje)
+      const dayItems = appState.history[todayKey] || [];
+      let totalKcalConsumidas = 0;
+      let totalExercicioKcal = 0;
+      let totalP = 0, totalH = 0, totalG = 0;
+
+      dayItems.forEach(item => {
+        if (item.type === 'refeicao') {
+          totalKcalConsumidas += item.kcal;
+          totalP += item.protein;
+          totalH += item.carbs;
+          totalG += item.fat;
+        } else if (item.type === 'exercicio') {
+          totalExercicioKcal += item.kcal;
+        }
+      });
+
+      const kcalLiquidas = totalKcalConsumidas - totalExercicioKcal;
+      const balancoKcal = metas.targetKcal - kcalLiquidas;
+
+      document.getElementById('card-calorias-liquidas').innerText = kcalLiquidas;
+      document.getElementById('card-calorias-consumidas').innerText = totalKcalConsumidas;
+      document.getElementById('card-calorias-exercicio').innerText = totalExercicioKcal;
+      
+      const balancoTexto = document.getElementById('card-balanco-texto');
+      if (balancoKcal >= 0) {
+        balancoTexto.innerText = `Faltam ${balancoKcal} kcal para a meta de hoje.`;
+      } else {
+        balancoTexto.innerText = `Excedeu a meta diária em ${Math.abs(balancoKcal)} kcal.`;
+      }
+
+      document.getElementById('card-tdee-texto').innerText = `TDEE: ${metas.tdee} kcal`;
+
+      // 2. Card de estimativa temporal
+      const cardEst = document.getElementById('card-estimativa-objetivo');
+      const textEst = document.getElementById('card-estimativa-texto');
+      const estimativa = getEstimatedDaysToGoal();
+
+      if (estimativa && appState.profile.objetivo !== 'manter-peso') {
+        cardEst.classList.remove('hidden');
+        if (estimativa.reach) {
+          textEst.innerHTML = `Com base no seu registo diário, estima-se que alcance a sua meta de <strong>${estimativa.kgAPerder} kg</strong> a <strong>${estimativa.dateStr}</strong> (~${estimativa.days} dias).`;
+        } else {
+          textEst.innerText = estimativa.text;
+        }
+      } else {
+        cardEst.classList.add('hidden');
+      }
+
+      // 3. Atualizar Barras de Progresso de Macros
+      document.getElementById('progress-kcal-atual').innerText = kcalLiquidas;
+      document.getElementById('progress-kcal-meta').innerText = metas.targetKcal;
+      const pctKcal = Math.min(100, Math.max(0, (kcalLiquidas / metas.targetKcal) * 100));
+      document.getElementById('bar-kcal').style.width = `${pctKcal}%`;
+
+      document.getElementById('progress-p-atual').innerText = `${Math.round(totalP)}g`;
+      document.getElementById('progress-p-meta').innerText = metas.proteinaG;
+      const pctP = Math.min(100, Math.max(0, (totalP / metas.proteinaG) * 100));
+      document.getElementById('bar-p').style.width = `${pctP}%`;
+
+      document.getElementById('progress-h-atual').innerText = `${Math.round(totalH)}g`;
+      document.getElementById('progress-h-meta').innerText = metas.hidratosG;
+      const pctH = Math.min(100, Math.max(0, (totalH / metas.hidratosG) * 100));
+      document.getElementById('bar-h').style.width = `${pctH}%`;
+
+      document.getElementById('progress-g-atual').innerText = `${Math.round(totalG)}g`;
+      document.getElementById('progress-g-meta').innerText = metas.gorduraG;
+      const pctG = Math.min(100, Math.max(0, (totalG / metas.gorduraG) * 100));
+      document.getElementById('bar-g').style.width = `${pctG}%`;
+
+      // 4. Desenhar Lista de Refeições de Hoje
+      renderTodayMealsList(dayItems, todayKey);
+
+      // 5. Atualizar as outras Tabs (Se ativas)
+      if (activeTab === 'registo') renderRegistoTab();
+      if (activeTab === 'semana') renderSemanaTab();
+      if (activeTab === 'graficos') renderGraficosTab();
+      
+      liveUpdateProfilePreview();
+      lucide.createIcons();
+    }
+
+    function renderTodayMealsList(dayItems, todayKey) {
+      const container = document.getElementById('hoje-lista-itens');
+      document.getElementById('hoje-refeicoes-count').innerText = `${dayItems.length} registos`;
+
+      if (dayItems.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white p-6 rounded-2xl text-center border border-dashed border-slate-200 text-slate-400 text-xs">
+            <i data-lucide="utensils" class="w-8 h-8 mx-auto opacity-30 mb-2"></i>
+            Nenhuma refeição ou exercício registado hoje.
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = dayItems.map(item => {
+        if (item.type === 'refeicao') {
+          const confidenceColor = item.confidence === 'alta' ? 'bg-emerald-100 text-emerald-800' : 
+                                  item.confidence === 'media' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800';
+          const confidenceTag = item.confidence ? `<span class="px-2 py-0.5 rounded text-[9px] font-bold ${confidenceColor}">IA (${item.confidence})</span>` : '';
+          
+          return `
+            <div class="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-bold text-slate-800 text-xs truncate">${item.name}</span>
+                  ${confidenceTag}
+                </div>
+                <p class="text-[10px] text-slate-500 font-medium">
+                  P: ${item.protein}g · H: ${item.carbs}g · G: ${item.fat}g
+                </p>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="font-bold text-slate-800 text-xs">${item.kcal} kcal</span>
+                <p class="text-[9px] text-slate-400 mt-0.5">${item.time || ''}</p>
+              </div>
+              <button onclick="deleteHistoryItem('${todayKey}', '${item.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1 shrink-0">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="bg-blue-50/50 p-3 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <div class="bg-blue-500 text-white p-1 rounded-lg shrink-0">
+                  <i data-lucide="dumbbell" class="w-3.5 h-3.5"></i>
+                </div>
+                <div class="truncate">
+                  <span class="font-bold text-slate-800 text-xs truncate">${item.name}</span>
+                  <span class="ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-[9px] font-bold">EXERCÍCIO</span>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="font-bold text-blue-600 text-xs">-${item.kcal} kcal</span>
+                <p class="text-[9px] text-slate-400 mt-0.5">${item.time || ''}</p>
+              </div>
+              <button onclick="deleteHistoryItem('${todayKey}', '${item.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1 shrink-0">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          `;
+        }
+      }).join('');
+      
+      lucide.createIcons();
+    }
+
+    // =========================================================================
+    // APAGAR ITEM DE HISTÓRICO
+    // =========================================================================
+    function deleteHistoryItem(dateKey, itemId) {
+      if (appState.history[dateKey]) {
+        appState.history[dateKey] = appState.history[dateKey].filter(i => i.id !== itemId);
+        if (appState.history[dateKey].length === 0) {
+          delete appState.history[dateKey];
+        }
+        saveState();
+        updateDashboard();
+        showToast("Entrada removida.");
+      }
+    }
+
+    // =========================================================================
+    // SEPARADOR REGISTO
+    // =========================================================================
+    function renderRegistoTab() {
+      const container = document.getElementById('historico-container');
+      const keysSorted = Object.keys(appState.history).sort((a, b) => b.localeCompare(a));
+
+      if (keysSorted.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white p-8 rounded-2xl text-center border border-dashed border-slate-200 text-slate-400 text-xs">
+            <i data-lucide="archive" class="w-10 h-10 mx-auto opacity-35 mb-2"></i>
+            Nenhum histórico registado até ao momento.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = keysSorted.map(dateKey => {
+        const items = appState.history[dateKey] || [];
+        let consumido = 0;
+        let exercicio = 0;
+        let p = 0, h = 0, g = 0;
+
+        items.forEach(it => {
+          if (it.type === 'refeicao') {
+            consumido += it.kcal;
+            p += it.protein;
+            h += it.carbs;
+            g += it.fat;
+          } else {
+            exercicio += it.kcal;
+          }
+        });
+
+        const liquido = consumido - exercicio;
+        const formattedDate = parseDateSafe(dateKey).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'short' });
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-700 capitalize">${formattedDate}</span>
+              <span class="text-[11px] font-semibold text-emerald-600">${liquido} kcal líq.</span>
+            </div>
+            <div class="p-3 divide-y divide-slate-50">
+              ${items.map(it => `
+                <div class="flex justify-between items-center py-2 text-xs">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-slate-800 truncate">${it.name}</p>
+                    <p class="text-[10px] text-slate-400">
+                      ${it.type === 'refeicao' ? `P: ${it.protein}g · HC: ${it.carbs}g · G: ${it.fat}g` : 'Gasto em atividade'}
+                    </p>
+                  </div>
+                  <div class="text-right flex items-center gap-2">
+                    <span class="font-bold ${it.type === 'refeicao' ? 'text-slate-700' : 'text-blue-500'}">
+                      ${it.type === 'refeicao' ? `${it.kcal} kcal` : `-${it.kcal} kcal`}
+                    </span>
+                    <button onclick="deleteHistoryItem('${dateKey}', '${it.id}')" class="text-slate-300 hover:text-rose-500 transition-colors p-1">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // =========================================================================
+    // SEPARADOR SEMANA
+    // =========================================================================
+    function renderSemanaTab() {
+      const container = document.getElementById('semana-bars-container');
+      const metas = calculateNutrition();
+      
+      // Criar lista dos últimos 7 dias
+      const dias = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        dias.push({ key, date: d });
+      }
+
+      container.innerHTML = dias.map(dia => {
+        const items = appState.history[dia.key] || [];
+        let consumido = 0;
+        let exercicio = 0;
+        let p = 0, h = 0, g = 0;
+
+        items.forEach(it => {
+          if (it.type === 'refeicao') {
+            consumido += it.kcal;
+            p += it.protein;
+            h += it.carbs;
+            g += it.fat;
+          } else {
+            exercicio += it.kcal;
+          }
+        });
+
+        const liquido = consumido - exercicio;
+        const pct = Math.min(100, (liquido / metas.targetKcal) * 100);
+        
+        // Cor lógica: Amarelo (abaixo 80%), Verde (No objetivo), Vermelho (Acima)
+        let barColor = 'bg-amber-500';
+        if (liquido > metas.targetKcal) {
+          barColor = 'bg-rose-500';
+        } else if (pct >= 80) {
+          barColor = 'bg-emerald-500';
+        }
+
+        const weekday = dia.date.toLocaleDateString('pt-PT', { weekday: 'short' });
+        const dayNum = dia.date.getDate();
+
+        return `
+          <div class="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-slate-700 capitalize">${weekday}, ${dayNum}</span>
+              <span class="font-semibold text-slate-600">${liquido} / ${metas.targetKcal} kcal</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div class="h-full rounded-full ${barColor} transition-all duration-300" style="width: ${pct}%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 font-medium">
+              <span>P: ${Math.round(p)}g</span>
+              <span>HC: ${Math.round(h)}g</span>
+              <span>G: ${Math.round(g)}g</span>
+              <span>Ex: ${exercicio} kcal</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // SEPARADOR GRÁFICOS (DINÂMICOS VIA CSS)
+    // =========================================================================
+    function renderGraficosTab() {
+      const metas = calculateNutrition();
+      
+      // Últimos 7 dias
+      const dias = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        dias.push({ key, date: d });
+      }
+
+      // 1. Gráfico de Barras: Calorias Líquidas
+      const kcalContainer = document.getElementById('grafico-calorias-container');
+      
+      // Encontrar altura máxima para escala
+      let maxKcalVal = 1000;
+      const parsedDiasKcal = dias.map(dia => {
+        const items = appState.history[dia.key] || [];
+        let consumido = 0;
+        let exercicio = 0;
+        items.forEach(it => {
+          if (it.type === 'refeicao') consumido += it.kcal;
+          else exercicio += it.kcal;
+        });
+        const liq = consumido - exercicio;
+        if (liq > maxKcalVal) maxKcalVal = liq;
+        return liq;
+      });
+
+      kcalContainer.innerHTML = parsedDiasKcal.map((liq, index) => {
+        const d = dias[index];
+        const pctHeight = Math.max(5, Math.min(100, (liq / maxKcalVal) * 100));
+        const color = liq > metas.targetKcal ? 'bg-rose-500' : 'bg-emerald-500';
+        const formattedLabel = d.date.toLocaleDateString('pt-PT', { weekday: 'short' }).substring(0, 1).toUpperCase();
+
+        return `
+          <div class="flex flex-col items-center flex-1 h-full justify-end group relative">
+            <!-- Tooltip -->
+            <div class="absolute bottom-full mb-1 bg-slate-900 text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap">
+              ${liq} kcal
+            </div>
+            <div class="${color} w-full rounded-t-sm transition-all duration-300" style="height: ${pctHeight}%"></div>
+            <span class="text-[9px] text-slate-400 font-bold mt-1.5">${formattedLabel}</span>
+          </div>
+        `;
+      }).join('');
+
+      // 2. Gráfico de Linhas: Macros (Simplificado com colunas triplas para cada dia)
+      const macrosContainer = document.getElementById('grafico-macros-container');
+      
+      let maxMacroVal = 50; // escala base
+      const parsedDiasMacros = dias.map(dia => {
+        const items = appState.history[dia.key] || [];
+        let p = 0, h = 0, g = 0;
+        items.forEach(it => {
+          if (it.type === 'refeicao') {
+            p += it.protein;
+            h += it.carbs;
+            g += it.fat;
+          }
+        });
+        if (p > maxMacroVal) maxMacroVal = p;
+        if (h > maxMacroVal) maxMacroVal = h;
+        if (g > maxMacroVal) maxMacroVal = g;
+        return { p, h, g };
+      });
+
+      macrosContainer.innerHTML = parsedDiasMacros.map((macro, index) => {
+        const d = dias[index];
+        const hP = Math.max(4, Math.min(100, (macro.p / maxMacroVal) * 100));
+        const hH = Math.max(4, Math.min(100, (macro.h / maxMacroVal) * 100));
+        const hG = Math.max(4, Math.min(100, (macro.g / maxMacroVal) * 100));
+        const formattedLabel = d.date.toLocaleDateString('pt-PT', { weekday: 'short' }).substring(0, 1).toUpperCase();
+
+        return `
+          <div class="flex flex-col items-center flex-1 h-full justify-end group relative">
+            <!-- Tooltip -->
+            <div class="absolute bottom-full mb-1 bg-slate-950 text-white text-[8px] p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap leading-tight">
+              P: ${Math.round(macro.p)}g<br>HC: ${Math.round(macro.h)}g<br>G: ${Math.round(macro.g)}g
+            </div>
+            <div class="flex items-end gap-0.5 w-full justify-center px-0.5">
+              <div class="bg-blue-500 w-1.5 rounded-t-sm transition-all duration-300" style="height: ${hP}%"></div>
+              <div class="bg-amber-500 w-1.5 rounded-t-sm transition-all duration-300" style="height: ${hH}%"></div>
+              <div class="bg-rose-500 w-1.5 rounded-t-sm transition-all duration-300" style="height: ${hG}%"></div>
+            </div>
+            <span class="text-[9px] text-slate-400 font-bold mt-1.5">${formattedLabel}</span>
+          </div>
+        `;
+      }).join('');
+
+      // 3. Gestão de Biblioteca Completa
+      renderLibraryManagementList();
+    }
+
+    function renderLibraryManagementList() {
+      const listEl = document.getElementById('biblioteca-lista-gestao');
+      document.getElementById('biblioteca-count').innerText = `${appState.library.length} itens`;
+
+      if (appState.library.length === 0) {
+        listEl.innerHTML = `
+          <p class="text-slate-400 text-center py-4">Nenhum alimento na sua biblioteca.</p>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = appState.library.map(item => `
+        <div class="bg-slate-50 p-2.5 rounded-xl flex justify-between items-center gap-2">
+          <div class="min-w-0 flex-1">
+            <span class="font-bold text-slate-700 truncate block">${item.name}</span>
+            <span class="text-[10px] text-slate-400">
+              ${item.kcal} kcal · P: ${item.protein}g · H: ${item.carbs}g · G: ${item.fat}g
+            </span>
+          </div>
+          <button onclick="deleteLibraryItem('${item.id}')" class="text-slate-300 hover:text-rose-500 transition-colors shrink-0">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function deleteLibraryItem(id) {
+      appState.library = appState.library.filter(i => i.id !== id);
+      saveState();
+      renderLibraryManagementList();
+      showToast("Alimento removido da biblioteca.");
+    }
+
+    // =========================================================================
+    // EXPORTAR / IMPORTAR BACKUP (iOS / SAFARI FRIENDLY)
+    // =========================================================================
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `nutritrack_backup_${getTodayKey()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast("Cópia de segurança gerada com sucesso!");
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported.profile && imported.history && imported.library) {
+            if (confirm("Isto substituirá todos os seus dados atuais. Pretende continuar?")) {
+              appState = imported;
+              saveState();
+              initUI();
+              showToast("Dados restaurados com sucesso!");
+            }
+          } else {
+            alert("Ficheiro inválido. O JSON não possui a estrutura correta do NutriTrack.");
+          }
+        } catch(err) {
+          alert("Ocorreu um erro ao processar o ficheiro JSON de restauro.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function clearAllDataPrompt() {
+      if (confirm("Tem a certeza que deseja limpar todo o seu histórico de refeições e dados locais?")) {
+        appState.history = {};
+        saveState();
+        updateDashboard();
+        showToast("Todo o histórico foi limpo.");
+      }
+    }
+
+    // =========================================================================
+    // INTEGRAÇÃO COM IA: DEBOUNCE & REFEIÇÕES (SUPORTA iOS E SAFARI EVENT TRIGGERS)
+    // =========================================================================
+    function setupDebounceIA() {
+      const input = document.getElementById('meal-desc-ia');
+      
+      // Associamos também a escuta de 'change' e 'blur' para suportar o ditado/colagem do teclado do iOS
+      const handler = () => {
+        clearTimeout(iaDebounceTimer);
+        const val = input.value.trim();
+        if (val.length < 5) {
+          document.getElementById('ia-analyzer-spinner').classList.add('hidden');
+          return;
+        }
+
+        // Ativar animação de loading enquanto o utilizador escreve
+        document.getElementById('ia-analyzer-spinner').classList.remove('hidden');
+
+        iaDebounceTimer = setTimeout(() => {
+          analyzeMealWithIA(val);
+        }, 1200); // 1.2s de pausa após digitação
+      };
+
+      input.addEventListener('input', handler);
+      input.addEventListener('change', handler);
+    }
+
+    async function analyzeMealWithIA(text) {
+      const spinner = document.getElementById('ia-analyzer-spinner');
+      const confidenceIndicator = document.getElementById('ia-confidence-indicator');
+
+      try {
+        const systemPrompt = `És um especialista em nutrição e saúde português. Analisa o texto fornecido pelo utilizador com uma descrição de alimento/refeição e calcula os seus macronutrientes correspondentes.
+        Deves responder APENAS com um formato JSON estrito, seguindo exatamente o esquema de resposta especificado.`;
+
+        const payload = {
+          contents: [{ parts: [{ text: text }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING" },
+                kcal: { type: "INTEGER" },
+                protein: { type: "NUMBER" },
+                carbs: { type: "NUMBER" },
+                fat: { type: "NUMBER" },
+                confidence: { type: "STRING" }
+              },
+              required: ["name", "kcal", "protein", "carbs", "fat", "confidence"]
+            }
+          }
+        };
+
+        // Chamada à API utilizando o auxiliar robusto de retentativas (fetchWithRetry)
+        const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error("Resposta HTTP " + response.status + " do servidor de IA.");
+        }
+        
+        const data = await response.json();
+        const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!jsonText) throw new Error("Resposta do modelo veio vazia.");
+
+        const result = JSON.parse(jsonText.trim());
+
+        // Preencher os campos editáveis
+        document.getElementById('meal-field-name').value = result.name || "Refeição Personalizada";
+        document.getElementById('meal-field-kcal').value = result.kcal || 0;
+        document.getElementById('meal-field-protein').value = result.protein || 0;
+        document.getElementById('meal-field-carbs').value = result.carbs || 0;
+        document.getElementById('meal-field-fat').value = result.fat || 0;
+
+        // Exibir indicação de confiança
+        confidenceIndicator.classList.remove('hidden');
+        let confColor = 'border-emerald-200 bg-emerald-50 text-emerald-800';
+        let confText = 'Confiança Alta';
+
+        if (result.confidence === 'media') {
+          confColor = 'border-amber-200 bg-amber-50 text-amber-800';
+          confText = 'Confiança Média (Ajuste recomendado)';
+        } else if (result.confidence === 'baixa') {
+          confColor = 'border-rose-200 bg-rose-50 text-rose-800';
+          confText = 'Confiança Baixa (Verifique os dados)';
+        }
+
+        confidenceIndicator.className = `p-2.5 rounded-xl border flex items-center gap-2 text-xs font-semibold ${confColor}`;
+        confidenceIndicator.innerHTML = `
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span>Análise de IA: ${confText}</span>
+        `;
+        lucide.createIcons();
+
+      } catch (err) {
+        console.error("Erro na análise automática de IA:", err);
+        // Explicitação detalhada do erro no Toast para depuração direta do utilizador no iPhone
+        showToast("Análise falhou (" + err.message + "). Por favor, insira ou ajuste manualmente.");
+      } finally {
+        spinner.classList.add('hidden');
+      }
+    }
+
+    // =========================================================================
+    // BIBLIOTECA RÁPIDA (MODAL REFEIÇÃO)
+    // =========================================================================
+    function toggleLibraryView() {
+      const section = document.getElementById('quick-library-section');
+      section.classList.toggle('hidden');
+      renderQuickLibrary();
+    }
+
+    function renderQuickLibrary() {
+      const section = document.getElementById('quick-library-section');
+      if (appState.library.length === 0) {
+        section.innerHTML = `<p class="text-[10px] text-slate-400 text-center py-2">Sem refeições guardadas na biblioteca.</p>`;
+        return;
+      }
+
+      section.innerHTML = appState.library.map(item => `
+        <button onclick="selectLibraryItemQuick('${item.id}')" class="w-full text-left bg-white border border-slate-100 hover:border-emerald-300 p-2 rounded-lg text-[11px] block transition-all space-y-0.5">
+          <span class="font-bold text-slate-700 block truncate">${item.name}</span>
+          <span class="text-slate-400 block">${item.kcal} kcal · P: ${item.protein}g · H: ${item.carbs}g · G: ${item.fat}g</span>
+        </button>
+      `).join('');
+    }
+
+    function selectLibraryItemQuick(id) {
+      const item = appState.library.find(i => i.id === id);
+      if (item) {
+        document.getElementById('meal-field-name').value = item.name;
+        document.getElementById('meal-field-kcal').value = item.kcal;
+        document.getElementById('meal-field-protein').value = item.protein;
+        document.getElementById('meal-field-carbs').value = item.carbs;
+        document.getElementById('meal-field-fat').value = item.fat;
+        
+        // Esconder secção da biblioteca rápida após a seleção
+        document.getElementById('quick-library-section').classList.add('hidden');
+        showToast(`Carregado: ${item.name}`);
+      }
+    }
+
+    // =========================================================================
+    // GRAVAR ENTRADAS (REFEIÇÃO / EXERCÍCIO)
+    // =========================================================================
+    function saveMealEntry() {
+      const name = document.getElementById('meal-field-name').value.trim();
+      const kcal = parseInt(document.getElementById('meal-field-kcal').value);
+      const protein = parseFloat(document.getElementById('meal-field-protein').value) || 0;
+      const carbs = parseFloat(document.getElementById('meal-field-carbs').value) || 0;
+      const fat = parseFloat(document.getElementById('meal-field-fat').value) || 0;
+      const saveToLib = document.getElementById('meal-field-save-lib').checked;
+
+      if (!name || isNaN(kcal)) {
+        alert("Introduza o nome da refeição e as respetivas calorias.");
+        return;
+      }
+
+      const todayKey = getTodayKey();
+      if (!appState.history[todayKey]) {
+        appState.history[todayKey] = [];
+      }
+
+      // Detetar o nível de confiança
+      let currentConfidence = null;
+      const descInput = document.getElementById('meal-desc-ia').value.trim();
+      if (descInput.length > 0) {
+        currentConfidence = 'alta'; 
+        const confidenceEl = document.getElementById('ia-confidence-indicator');
+        if (!confidenceEl.classList.contains('hidden')) {
+          if (confidenceEl.innerText.toLowerCase().includes('média') || confidenceEl.innerText.toLowerCase().includes('media')) {
+            currentConfidence = 'media';
+          } else if (confidenceEl.innerText.toLowerCase().includes('baixa')) {
+            currentConfidence = 'baixa';
+          }
+        }
+      }
+
+      const timeNow = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+
+      const newEntry = {
+        id: generateUUID(),
+        type: 'refeicao',
+        name,
+        kcal,
+        protein,
+        carbs,
+        fat,
+        confidence: currentConfidence,
+        time: timeNow
+      };
+
+      appState.history[todayKey].push(newEntry);
+
+      // Guardar na biblioteca se selecionado
+      if (saveToLib) {
+        const inLibrary = appState.library.some(i => i.name.toLowerCase() === name.toLowerCase());
+        if (!inLibrary) {
+          appState.library.push({
+            id: generateUUID(),
+            name,
+            kcal,
+            protein,
+            carbs,
+            fat
+          });
+        }
+      }
+
+      saveState();
+      closeModal('meal-modal');
+      updateDashboard();
+      showToast("Refeição registada com sucesso!");
+    }
+
+    function saveExerciseEntry() {
+      const name = document.getElementById('exe-name').value.trim();
+      const kcal = parseInt(document.getElementById('exe-kcal').value);
+
+      if (!name || isNaN(kcal)) {
+        alert("Por favor, preencha o nome do treino e o gasto de calorias.");
+        return;
+      }
+
+      const todayKey = getTodayKey();
+      if (!appState.history[todayKey]) {
+        appState.history[todayKey] = [];
+      }
+
+      const timeNow = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+
+      const newEntry = {
+        id: generateUUID(),
+        type: 'exercicio',
+        name,
+        kcal,
+        time: timeNow
+      };
+
+      appState.history[todayKey].push(newEntry);
+      
+      saveState();
+      
+      // Limpar campos
+      document.getElementById('exe-name').value = '';
+      document.getElementById('exe-kcal').value = '';
+
+      closeModal('exercise-modal');
+      updateDashboard();
+      showToast("Exercício registado!");
+    }
+
+    // =========================================================================
+    // RELATÓRIO DO DIA COM IA
+    // =========================================================================
+    async function requestIAReport() {
+      const reportBox = document.getElementById('report-content-box');
+      openModal('report-modal');
+
+      // Loading inicial
+      reportBox.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 space-y-3">
+          <div class="text-indigo-600 animate-spin">
+            <i data-lucide="loader" class="w-8 h-8"></i>
+          </div>
+          <p class="text-slate-600 font-semibold text-xs">O seu assistente de nutrição está a redigir o relatório...</p>
+        </div>
+      `;
+      lucide.createIcons();
+
+      const todayKey = getTodayKey();
+      const dayItems = appState.history[todayKey] || [];
+      const metas = calculateNutrition();
+
+      let totalConsumido = 0;
+      let totalExercicio = 0;
+      let p = 0, h = 0, g = 0;
+      const descritivoRefeicoes = [];
+
+      dayItems.forEach(it => {
+        if (it.type === 'refeicao') {
+          totalConsumido += it.kcal;
+          p += it.protein;
+          h += it.carbs;
+          g += it.fat;
+          descritivoRefeicoes.push(`- ${it.name} (${it.kcal} kcal, P:${it.protein}g H:${it.carbs}g G:${it.fat}g)`);
+        } else {
+          totalExercicio += it.kcal;
+          descritivoRefeicoes.push(`- Exercício: ${it.name} (-${it.kcal} kcal)`);
+        }
+      });
+
+      const liquido = totalConsumido - totalExercicio;
+
+      try {
+        const systemPrompt = `És um nutricionista profissional, experiente, com abordagem científica atualizada. O teu tom deve ser informal, prestável e motivador, usando português europeu puro (ex: "utilizador", "estás", "equilíbrio").
+        Gera um relatório sintético em português de Portugal para o dia do utilizador, com um máximo de 180 palavras.
+        Não uses estruturas formais nem cabeçalhos excessivos. Sê direto e prático.
+        Aprecia o balanço entre as calorias líquidas ingeridas e a meta diária e faz 1 a 2 sugestões práticas de melhoria para o dia de amanhã.`;
+
+        const contextQuery = `Dados do dia de Hoje:
+        - TDEE calculado: ${metas.tdee} kcal
+        - Meta de calorias líquidas configurada: ${metas.targetKcal} kcal
+        - Consumo líquido real de hoje: ${liquido} kcal (Consumido: ${totalConsumido} kcal, Exercício: ${totalExercicio} kcal)
+        - Macronutrientes consumidos: Proteínas: ${Math.round(p)}g (Meta: ${metas.proteinaG}g), Hidratos: ${Math.round(h)}g (Meta: ${metas.hidratosG}g), Gorduras: ${Math.round(g)}g (Meta: ${metas.gorduraG}g)
+        - Registos diários realizados:
+        ${descritivoRefeicoes.length > 0 ? descritivoRefeicoes.join('\n') : 'Nenhum alimento registado hoje.'}`;
+
+        const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: contextQuery }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] }
+          })
+        });
+
+        if (!response.ok) throw new Error("Erro na comunicação com a IA");
+
+        const data = await response.json();
+        const textoResposta = data.candidates?.[0]?.content?.parts?.[0]?.text || "Erro ao receber análise da IA.";
+
+        const formattedHTML = textoResposta
+          .split('\n')
+          .filter(p => p.trim() !== '')
+          .map(p => `<p class="mb-2 text-slate-700 leading-relaxed text-xs">${p}</p>`)
+          .join('');
+
+        reportBox.innerHTML = `
+          <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 mb-3 text-[11px] text-indigo-900 flex gap-2">
+            <i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5"></i>
+            <span>Este relatório é uma estimativa assistida por inteligência artificial baseada nos seus dados de perfil e de consumo de hoje.</span>
+          </div>
+          <div class="space-y-2">
+            ${formattedHTML}
+          </div>
+        `;
+        lucide.createIcons();
+
+      } catch (err) {
+        console.error(err);
+        reportBox.innerHTML = `
+          <div class="text-center py-8 text-rose-500">
+            <i data-lucide="alert-circle" class="w-8 h-8 mx-auto mb-2"></i>
+            <p class="font-bold text-xs">Erro ao analisar o seu dia.</p>
+            <p class="text-[10px] text-slate-400 mt-1">Verifique a ligação à internet ou tente mais tarde.</p>
+          </div>
+        `;
+        lucide.createIcons();
+      }
+    }
+  </script>
+</body>
+</html>
